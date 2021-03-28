@@ -312,10 +312,15 @@ handle (MapRequestEvent    {ev_window = w}) = withDisplay $ \dpy -> do
 
 -- window destroyed, unmanage it
 -- window gone,      unmanage it
-handle (DestroyWindowEvent {ev_window = w}) = whenX (isClient w) $ do
+-- broadcast to layouts
+handle e@(DestroyWindowEvent {ev_window = w}) = do
+  whenX (isClient w) $ do
     unmanage w
     modify (\s -> s { mapped       = S.delete w (mapped s)
                     , waitingUnmap = M.delete w (waitingUnmap s)})
+  -- It is possible that the window is already unmanged, but we broadcast the
+  -- event to the layouts anyway so they do their garbage-collection
+  broadcastMessage e
 
 -- We track expected unmap events in waitingUnmap.  We ignore this event unless
 -- it is synthetic or we are not expecting an unmap notification from a window.
